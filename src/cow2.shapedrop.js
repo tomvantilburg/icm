@@ -8,7 +8,7 @@
 
 /** TODO
 Compress the JSON (maybe http://pieroxy.net/blog/pages/lz-string/index.html)
-
+    or: make topojson from geojson 
 
 **/
 var dropgroup;
