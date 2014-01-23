@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+  <head>
+  <title>Concurrent Online Webgis</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+
+  <link href='http://fonts.googleapis.com/css?family=Dosis:300,500' rel='stylesheet' type='text/css'>
+
+  <script src="./libs/cow/lib/polyfill-promise/promise-0.1.1.min.js" type="text/javascript"></script>
+  <script src="./libs/cow/lib/underscore/underscore-min.js" type="text/javascript"></script>
+
+  <!-- PouchDB -->
+  <script src="./libs/cow/lib/pouchdb/pouchdb-nightly.min.js"></script>
+
+  <!-- Adding leaflet and D3 libs, possible replacement for OL -->
+  <script src="./libs/d3/d3.v3.min.js" charset="utf-8"></script>
+  
+  <!-- Peerjs -->
+  <script src="./libs/cow/src/cow2.utils.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.record.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.syncstore.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.peer.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.user.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.group.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.item.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.project.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.websocket.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.core.js" type="text/javascript"></script>
+  <script src="./libs/cow/src/cow2.js" type="text/javascript"></script>
+  
+  <script src="./src/cow2.icm.js" type="text/javascript"></script>
+  
+  <script src="./src/cookies.js" type="text/javascript"></script>
+<style>
+HTML {
+	font-family: 'Dosis', Arial, sans-serif; 
+	font-weight: 300; 
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	color: #555753;
+	overflow: hidden;
+}
+h1{
+	font-family: 'Dosis', Arial, sans-serif;
+	font-weight: 500; 
+	font-size: 28pt;
+	color: #555753;
+	margin-top: 0.6em;
+}
+h3 {
+	font-family: 'Dosis', Arial, sans-serif;
+	font-weight: 500; 
+	font-size: 14pt;
+	color: #555753;
+}
+
+#content {
+    position: absolute;
+    left: 30%;
+    top: 30%;
+    font-size: 14pt;
+}
+
+#username {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    max-height: 100px;
+}
+
+#projectlist {
+    position: absolute;
+    top: 100px;
+    left: 0px;
+}
+
+#grouplist {
+    position: absolute;
+    top: 100px;
+    left: 400px;
+}
+#start {
+    position: absolute;
+    padding: 10px;
+    top: 0px;
+    left: 400px;
+    background-color: steelBlue;
+    color: white;
+    font-size: 24pt;
+}
+
+.item {
+    padding: 10px;
+    border: solid 1px steelBlue;
+}
+.active {
+    background-color: steelBlue;
+    color: white;
+}
+
+</style>
+
+<script type="text/javascript">
+var core;
+var init = function(){
+  core = new Cow.core({
+     wsUrl: 'wss://websocket.geodan.nl:443/new'
+  });
+  
+  //TODO: move username admin to other place
+  //Some username administration with cookies
+  var username=getCookie("username");
+  var logon = function(username){
+    document.getElementById('myname').value = username;
+    core.users({_id:username}).sync();
+    core.user(username);
+  }
+  if (username!=null && username!="")
+  {
+    logon(username);
+  }
+  else 
+  {
+    username=prompt("Please enter your name:","");
+    if (username!=null && username!="")
+    {
+        logon(username);
+        setCookie("username",username,1);
+    }
+  }
+  
+  //What to do when a user changes name
+  d3.select('#myname').on('blur', function(e, ui) {
+    var username = this.value;
+    logon(username);
+    setCookie("username",username,1);
+  });
+  
+  d3.select('#start').on('click', function(){
+    var username = document.getElementById('myname').value;
+    var project = d3.select('#projectlist').select('.active').attr('id');
+    var group = d3.select('#grouplist').select('.active').attr('id');
+    
+    window.location = "./cow2.map.html?user=" + username + "&project=" + project + "&group=" + group;
+  });
+  
+  //Default init settings
+  
+  core.projectStore().initpromise.then(function(x){
+      if (!core.projects(1)){
+        defaultproject = core.projects({_id:1}).data('name',"Sketch").sync();
+      } else {
+        defaultproject = core.projects(1);
+      }
+      defaultproject.groupStore().initpromise.then(function(x){
+        if (!defaultproject.groups(1)){
+            defaultgroup = defaultproject.groups({_id:1}).data('name','Public').sync();
+        } else {
+            defaultgroup = defaultproject.groups(1);
+        }
+        defaultgroup.members(core.user().id()); //make me a member
+      });
+      core.project(1); //set 1 as active project
+  },
+  function(e){
+    console.warn('Error: ', e.message);
+  }
+  );
+  
+  core.projectStore().on('datachange',updateLists);
+  core.userStore().on('datachange',updateLists);
+ 
+  core.on('projectChanged',function(){
+    updateLists();
+    core.project().itemStore().on('datachange',updateLists);
+    core.project().groupStore().on('datachange',updateLists);
+  });
+  updateLists();
+}
+
+var updateLists = function(){
+    core.projectStore().initpromise.then(function(x){
+        //PROJECTS
+        var data = icm.projects();
+        var project = d3.select('#projectlist').selectAll('.item')
+            .data(data, function(d){return 'project'+d.id();});
+        project.enter().append('div')
+            .classed('item',true)
+            .attr('id',function(d){return d.id();})
+            .html(function(d){return d.data('name') || d.id();});
+        project.classed('active',function(d){
+            if (d.id() == core.project().id()){
+                return true;
+            }
+            return false;
+        });
+        project.on('click', function(d){
+            core.project(d.id());
+        });
+        project.exit().remove();
+    });
+    //GROUPS  
+    core.project().groupStore().initpromise.then(function(x){
+        var data = icm.groups();
+        var item = d3.select('#grouplist').selectAll('.item')
+            .data(data, function(d){return 'group'+d.id();});
+        item.enter().append('div')
+            .classed('item',true)
+            .attr('id',function(d){return d.id();})
+            .html(function(d){return d.data('name') || d.id();});
+        item.classed('active',function(d){
+           
+        });
+        item.on('click', function(d){
+            if (d3.select(this).classed('active')){
+                d3.select(this).classed('active', false);
+            }
+            else{
+                d3.select('#grouplist').selectAll('.item').classed('active',false);
+                d3.select(this).classed('active', true);
+            }
+        });
+        item.exit().remove();
+    });
+};
+
+
+
+</script>
+</head>
+
+<body>
+    <div id="content">
+        <div id="username">Naam: <input id="myname"></div>
+        <div id="projectlist">Project: </div>
+        <div id="grouplist">Group: </div>
+        <div id="start">Start</div>
+    </div>
+    
+    
+    <script type="text/javascript">
+    init();
+    </script>
+</body>
+</html>
+
+

@@ -372,8 +372,8 @@ Based on: https://github.com/rclark/leaflet-d3-layer/blob/master/dist/scripts/le
                 if (d.style && d.style.icon && d.geometry.type == 'Point'){
                     entity.select('image')
                         .attr("x",x-25)
-                        .attr("y",y-25)
-                        .moveToFront();
+                        .attr("y",y-25);
+                        //.moveToFront();
                 }
                 else{
                     entity.select('path') //Only 1 path per entity

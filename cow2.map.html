@@ -22,7 +22,7 @@
   <script src="./libs/cow/lib/pouchdb/pouchdb-nightly.min.js"></script>
 
   <!-- Adding leaflet and D3 libs -->
-  
+  <script src="./libs/proj4/proj4.js"></script>
   <script src="./libs/leaflet-0.7/leaflet.js"></script>
   <script src="./libs/leaflet_draw/leaflet.draw.js"></script>
   <script src="./libs/leaflet_label/leaflet.label.js"></script>
@@ -35,6 +35,8 @@
   <link rel="stylesheet" href="./libs/leaflet_measure/leaflet.measurecontrol.css" />
   
   <script src="./libs/d3/d3.v3.min.js" charset="utf-8"></script>
+  <script src="./libs/d3-slider/d3.slider.js" charset="utf-8"></script>
+  <link rel="stylesheet" href="./libs/d3-slider/d3.slider.css" />
   
   <link rel="stylesheet" href="./css/leaflet_d3.css" />
   
@@ -57,8 +59,12 @@
   <script src="./src/cow2.d3layer_utils.js" type="text/javascript"></script>
   <script src="./src/cow2.leaflmap.js" type="text/javascript"></script>
   <script src="./src/cow2.icm.js" type="text/javascript"></script>
+  <script src="./src/cow2.icm.smokemodel.js" type="text/javascript"></script>
+  <script src="./src/cow2.icm.smokemodelstore.js" type="text/javascript"></script>
+  <script src="./src/cow2.icm.smokemodelui.js" type="text/javascript"></script>
   <script src="./src/cow2.shapedrop.js" type="text/javascript"></script>
-  
+  <script src="./src/cow2.icm.knopwidget.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="./css/knoppenwidget.css" />
   <script src="./src/cookies.js" type="text/javascript"></script>
 <style>
 HTML {
@@ -113,6 +119,39 @@ h3 {
     height: 100%;
     background: steelBlue;
     cursor: pointer;
+}
+
+#sidebarleft {
+    float: right;
+    position: absolute;
+    padding-left: 20px;
+    top: 0px;
+    left: -350px;
+    bottom: 0px;
+    width: 330px;
+    background: white;
+    z-index: 1001;
+}
+
+#sidebarleft #rulerleft {
+    position: absolute;
+    right: -5px;
+    width: 10px;
+    height: 100%;
+    background: steelBlue;
+    cursor: pointer;
+}
+
+#centerbox {
+    position: absolute;
+    left: 20%;
+    top: 20%;
+    width: 600px;
+    height: 600px;
+    padding: 40px;
+    background-color: white;
+    display: none;
+    z-index: 1000;
 }
 
 .item.msg {
@@ -221,10 +260,32 @@ path {
     cursor: pointer;
 }
 
+#logout {
+    padding: 10px;
+    margin: 10px;
+    width: 100px;
+    background-color: steelBlue;
+    color: white;
+    font-size: 24pt;
+    cursor: pointer;
+}
+
 </style>
 <script type="text/javascript">
 
-
+//internal function
+var getUrlVars = function()
+{
+    var vars = [], hash;
+    var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+    for(var i = 0; i < hashes.length; i++)
+    {
+        hash = hashes[i].split('=');
+        vars.push(hash[0]);
+        vars[hash[0]] = hash[1];
+    }
+    return vars;
+};
 
 var updateLists = function(){
   //peers not used
@@ -418,25 +479,28 @@ var updateLists = function(){
         //});
         
         //PROJECTS
-        var data = icm.projects();
-        var project = d3.select('#projectlist').selectAll('.project')
-            .data(data, function(d){return 'project'+d._id.toString();});
-        project.enter().append('div').classed('project',true).attr('id',function(d){return 'project'+d._id.toString();});
-        project.classed('active',function(d){
-            if (d.id() == core.project().id()){
-                return true;
-            }
-            else {
-                return false;
-            }
+        core.projectStore().initpromise.then(function(foo){
+            d3.select('#curproject').html(function(d){return core.project().data('name');});
         });
-        project.html(function(d){
-            return d.data('name');
-        });
-        project.on('click', function(d){
-            core.project(d.id());
-        });
-        project.exit().remove();
+        //var data = icm.projects();
+        //var project = d3.select('#projectlist').selectAll('.project')
+        //    .data(data, function(d){return 'project'+d._id.toString();});
+        //project.enter().append('div').classed('project',true).attr('id',function(d){return 'project'+d._id.toString();});
+        //project.classed('active',function(d){
+        //    if (d.id() == core.project().id()){
+        //        return true;
+        //    }
+        //    else {
+        //        return false;
+        //    }
+        //});
+        //project.html(function(d){
+        //    return d.data('name');
+        //});
+        //project.on('click', function(d){
+        //    core.project(d.id());
+        //});
+        //project.exit().remove();
    });
 }
 
@@ -449,14 +513,22 @@ var overLayers;
 var map;
 var defaultproject;
 var defaultgroup;
-
-
+var smokelayers;
 //
 // Document Ready
 //
 
 var init = function(){
+    //TODO: remove jquery dependency
+    $('#newfeatpanel').KnopWidget({core: '#cow'});
+
+    //SMOKEMODEL BLOCK
+    d3.select('#sidebarleft').call(icm.SmokeModelUi);
+    
     d3.select('#msgbox').style('display','none');
+    d3.select('#logout').on('click', function(foo){
+        window.location = "./index.html";
+    });
     d3.select('#nwmsgbutton').on('click',function(d){
       var newid = new Date().getTime().toString();
       var item = core.project().items(newid)
@@ -469,13 +541,24 @@ var init = function(){
     d3.select('#sidebar #ruler').on('click',function(d){
       var me = d3.select('#sidebar');
       var newwidth;
-      if (me.style('width') == '330px'){
-          newwidth = '20px';
+      if (me.style('right') == '0px'){
+          newwidth = '-330px';
       }
       else {
-          newwidth = '330px';
+          newwidth = '0px';
       }
-      me.transition().style('width',newwidth);
+      me.transition().style('right',newwidth);
+    });
+    d3.select('#sidebarleft #rulerleft').on('click',function(d){
+      var me = d3.select('#sidebarleft');
+      var newwidth;
+      if (me.style('left') == '0px'){
+          newwidth = '-350px';
+      }
+      else {
+          newwidth = '0px';
+      }
+      me.transition().style('left',newwidth);
     });
       
     core = new Cow.core({
@@ -494,54 +577,23 @@ var init = function(){
   
     shapedrop_init(map);
     
-  //TODO: move username admin to other place
-  //Some username administration with cookies
-  var username=getCookie("username");
-  var logon = function(username){
-    document.getElementById('myname').value = username;
-    core.users({_id:username}).sync();
-    core.user(username);
-  }
-  if (username!=null && username!="")
-  {
-    logon(username);
-  }
-  else 
-  {
-    username=prompt("Please enter your name:","");
-    if (username!=null && username!="")
-    {
-        logon(username);
-        setCookie("username",username,1);
-    }
-  }
-  logon(username);
-  
-  
-  //Default init settings
-  
-  core.projectStore().initpromise.then(function(x){
-      if (!core.projects(1)){
-        defaultproject = core.projects({_id:1}).data('name',"Sketch").sync();
-      } else {
-        defaultproject = core.projects(1);
-      }
-      defaultproject.groupStore().initpromise.then(function(x){
-        if (!defaultproject.groups(1)){
-            defaultgroup = defaultproject.groups({_id:1}).data('name','Public').sync();
-        } else {
-            defaultgroup = defaultproject.groups(1);
-        }
-        defaultgroup.members(core.user().id()); //make me a member
+   core.projectStore().initpromise.then(function(foo){
+   
+       var username = getUrlVars()["user"] || 'Anonymous';
+       core.users({_id:username}).sync();
+       core.user(username);
+       
+       var project =  getUrlVars()["project"] || '1';
+       var myproject = core.project(project);
+      
+       var group =  getUrlVars()["group"] || '1';
+      
+       myproject.groupStore().initpromise.then(function(x){
+        mygroup = myproject.groups(group);
+        mygroup.members(core.user().id()); //make me a member
       });
-      core.project(1); //set 1 as active project
-  },
-  function(e){
-    console.warn('Error: ', e.message);
-  }
-  );
+   });
   
-  //window.setInterval(updateLists, 2000);
   core.projectStore().on('datachange',updateLists);
   core.userStore().on('datachange',updateLists);
  
@@ -594,13 +646,8 @@ var init = function(){
     
   });
   
-  //What to do when a user changes name
-  d3.select('#myname').on('blur', function(e, ui) {
-    var username = this.value;
-    logon(username);
-    setCookie("username",username,1);
-  });
   
+  //Start the tracker
   var tracker = new icm.tracker();
   tracker.startTracking();
   core.websocket().on('connected',function(){
@@ -620,11 +667,15 @@ var init = function(){
     <span class="welcome"><span data-i18n="txt_welcome" id="txt_welcome">Welcome</span> <input id="myname"/ name="myname" title="click to change your name" value="anonymous" size="13"/></span>
   </div>
   <div id="content">
-    <div id="map"><h1>Map</h1></div>
+    <div id="map"></div>
+    <div id="knoppen">
+        <div id="newfeatpanel"></div>
+    </div>
     <div id="sidebar">
         <div id="ruler"></div>
         <div>
-            <div id="projectlist"><h3>Projects:</h3></div>
+            <div id="logout">Logout</div>
+            <div id="projectlist">Project: <b><span id="curproject"></span></b></div>
             <div id="userlist"><h3>Users:</h3></div>
             <div id="grouplist"><h3>Groups:</h3></div>
 
@@ -634,8 +685,11 @@ var init = function(){
             </div>
         </div>
     </div>
-    
-    
+    <div id="sidebarleft">
+        <div id="rulerleft"></div>
+        <div id="models"><h4>Models</h4></div>
+    </div>
+    <div id="centerbox"></div>
     
   </div>
   <div id="cow"></div>	

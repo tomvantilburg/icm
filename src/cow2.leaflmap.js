@@ -360,10 +360,7 @@ Cow.leaflmap.prototype =
 		
 		// Initialize the draw control and pass it the FeatureGroup of editable layers
 		this.drawControl = new L.Control.Draw({
-			draw: true,
-			draw: {
-			    circle: false
-			},
+			draw: false,
 			edit: {
 				//featureGroup: self.editLayer,
 				featureGroup: this.editLayer,
@@ -399,9 +396,8 @@ Cow.leaflmap.prototype =
             var d = new Date();
             var timestamp = d.getTime();
             feature.properties.icon = self.core.current_icon; //TODO TT: not nice
-            feature.properties.linecolor = "aliceBlue";
-            feature.properties.fillcolor = "green";
-            feature.properties.polycolor = "red";
+            feature.properties.linecolor = self.core.current_linecolor;//"aliceBlue";
+            feature.properties.polycolor = self.core.current_polycolor;//"red";
             feature.properties.key = self.core.UID + "_" + timestamp;
             //feature.properties.store = self.core.activeproject();
             feature.properties.creator = self.core.user().data('name');
@@ -435,7 +431,36 @@ Cow.leaflmap.prototype =
                 featureGroup: this.drawControl.options.edit.featureGroup,
                 selectedPathOptions: this.drawControl.options.edit.selectedPathOptions
             })
-		};              
+		};
+		//TODO: remove jquery dependency
+		$('#newfeatpanel').bind("newpoint", function(evt, key){
+			self.controls.linecontrol.disable();
+			self.controls.polycontrol.disable();
+			self.controls.pointcontrol.enable();
+			var Licon = L.icon({
+					iconUrl: key,
+					iconSize: [40, 40]
+			});
+			self.controls.pointcontrol.setOptions({icon: Licon});
+			var layer = self.editLayer;
+			core.current_icon = key;
+		});
+		$('#newfeatpanel').bind("newline", function(evt, key){
+			self.controls.pointcontrol.disable();
+			self.controls.polycontrol.disable();
+			self.controls.linecontrol.enable();
+			var layer = self.editLayer;
+			core.current_linecolor = key;
+			core.current_polycolor = 'none';
+		});
+		$('#newfeatpanel').bind("newpoly", function(evt, key){
+			self.controls.linecontrol.disable();
+			self.controls.pointcontrol.disable();
+			self.controls.polycontrol.enable();
+			var layer = self.editLayer;
+			core.current_linecolor = key;
+        	core.current_polycolor = key;
+		});
 	},
 		
 	

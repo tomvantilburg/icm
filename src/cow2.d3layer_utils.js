@@ -130,6 +130,11 @@ cow.menu = function(feature,obj, self){
           icon: './css/img/share_2_icon.png',
           label: "Delen",
           size: 1
+     },{
+         "name": "Smokemodel",
+          icon: './css/img/cloud_icon.png',
+          label: "Rookpluim",
+          size: 1
      }]
     };
     if (feature.geometry.type == 'Polygon' && core.projects(1).myGroups().indexOf(2) > -1){ //TODO: hard coded groupid
@@ -194,6 +199,11 @@ cow.menu = function(feature,obj, self){
         .on('click', function(d){
              d3.event.stopPropagation();//Prevent the map from firing click event as well
              var name = d.name;
+             if (name == 'Smokemodel'){
+                 entity.remove();
+                 var item = self._map.core.project().items(feature.properties.key);
+                 icm.NewModelUi(item);
+             }
              if (name == 'Pop'){
                  window.callback = function(d){ //FIXME, global callback function!!
                     entity.remove();
