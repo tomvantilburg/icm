@@ -13,8 +13,8 @@
   <script src="./libs/cow/lib/polyfill-promise/promise-0.1.1.min.js" type="text/javascript"></script>
   <script src="./libs/cow/lib/underscore/underscore-min.js" type="text/javascript"></script>
 
-  <!-- PouchDB -->
-  <script src="./libs/cow/lib/pouchdb/pouchdb-nightly.min.js"></script>
+  <!-- IndexedDB -->
+  <script src="./libs/cow/lib/dbjs/db.js"></script>
 
   <!-- Adding leaflet and D3 libs, possible replacement for OL -->
   <script src="./libs/d3/d3.v3.min.js" charset="utf-8"></script>
@@ -110,7 +110,7 @@ var defaultproject;
 var defaultgroup;
 
 var updateLists = function(){
-    core.projectStore().initpromise.then(function(x){
+    core.projectStore().loaded.then(function(x){
         //PROJECTS
         var data = icm.projects();
         var project = d3.select('#projectlist').selectAll('.project')
@@ -159,7 +159,7 @@ var updateLists = function(){
     });
     
     //GROUPS  
-    core.project().groupStore().initpromise.then(function(x){
+    core.project().groupStore().loaded.then(function(x){
         var data = icm.groups();
         var item = d3.select('#grouplist').selectAll('.group')
             .data(data, function(d){return 'group'+ d.id().toString();});
@@ -230,13 +230,13 @@ var init = function(){
   
   //Default init settings
   
-  core.projectStore().initpromise.then(function(x){
+  core.projectStore().loaded.then(function(x){
       if (!core.projects(1)){
         defaultproject = core.projects({_id:1}).data('name',"Sketch").sync();
       } else {
         defaultproject = core.projects(1);
       }
-      defaultproject.groupStore().initpromise.then(function(x){
+      defaultproject.groupStore().loaded.then(function(x){
         if (!defaultproject.groups(1)){
             defaultgroup = defaultproject.groups({_id:1}).data('name','Public').sync();
         } else {
@@ -251,15 +251,17 @@ var init = function(){
   }
   );
   
-  core.projectStore().on('datachange',updateLists);
-  core.userStore().on('datachange',updateLists);
- 
-  core.on('projectChanged',function(){
-    updateLists();
-    core.project().itemStore().on('datachange',updateLists);
-    core.project().groupStore().on('datachange',updateLists);
+  core.projectStore().loaded.then(function(x){
+      core.projectStore().on('datachange',updateLists);
+      core.userStore().on('datachange',updateLists);
+     
+      core.on('projectChanged',function(){
+        updateLists();
+        core.project().itemStore().on('datachange',updateLists);
+        core.project().groupStore().on('datachange',updateLists);
+      });
+      updateLists();
   });
-  updateLists();
   
 }
  

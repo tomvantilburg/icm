@@ -13,8 +13,8 @@
   <script src="./libs/cow/lib/polyfill-promise/promise-0.1.1.min.js" type="text/javascript"></script>
   <script src="./libs/cow/lib/underscore/underscore-min.js" type="text/javascript"></script>
 
-  <!-- PouchDB -->
-  <script src="./libs/cow/lib/pouchdb/pouchdb-nightly.min.js"></script>
+  <!-- Indexeddb -->
+  <script src="./libs/cow/lib/dbjs/db.js"></script>
 
   <!-- Adding leaflet and D3 libs, possible replacement for OL -->
   <script src="./libs/d3/d3.v3.min.js" charset="utf-8"></script>
@@ -152,13 +152,13 @@ var init = function(){
   
   //Default init settings
   
-  core.projectStore().initpromise.then(function(x){
+  core.projectStore().loaded.then(function(x){
       if (!core.projects(1)){
         defaultproject = core.projects({_id:1}).data('name',"Sketch").sync();
       } else {
         defaultproject = core.projects(1);
       }
-      defaultproject.groupStore().initpromise.then(function(x){
+      defaultproject.groupStore().loaded.then(function(x){
         if (!defaultproject.groups(1)){
             defaultgroup = defaultproject.groups({_id:1}).data('name','Public').sync();
         } else {
@@ -185,7 +185,7 @@ var init = function(){
 }
 
 var updateLists = function(){
-    core.projectStore().initpromise.then(function(x){
+    core.projectStore().loaded.then(function(x){
         //PROJECTS
         var data = icm.projects();
         var project = d3.select('#projectlist').selectAll('.item')
@@ -204,30 +204,33 @@ var updateLists = function(){
             core.project(d.id());
         });
         project.exit().remove();
-    });
-    //GROUPS  
-    core.project().groupStore().initpromise.then(function(x){
-        var data = icm.groups();
-        var item = d3.select('#grouplist').selectAll('.item')
-            .data(data, function(d){return 'group'+d.id();});
-        item.enter().append('div')
-            .classed('item',true)
-            .attr('id',function(d){return d.id();})
-            .html(function(d){return d.data('name') || d.id();});
-        item.classed('active',function(d){
-           
+        
+        //GROUPS  
+        core.project().groupStore().loaded.then(function(x){
+            var data = icm.groups();
+            var item = d3.select('#grouplist').selectAll('.item')
+                .data(data, function(d){return 'group'+d.id();});
+            item.enter().append('div')
+                .classed('item',true)
+                .attr('id',function(d){return d.id();})
+                .html(function(d){return d.data('name') || d.id();});
+            item.classed('active',function(d){
+               
+            });
+            item.on('click', function(d){
+                if (d3.select(this).classed('active')){
+                    d3.select(this).classed('active', false);
+                }
+                else{
+                    d3.select('#grouplist').selectAll('.item').classed('active',false);
+                    d3.select(this).classed('active', true);
+                }
+            });
+            item.exit().remove();
         });
-        item.on('click', function(d){
-            if (d3.select(this).classed('active')){
-                d3.select(this).classed('active', false);
-            }
-            else{
-                d3.select('#grouplist').selectAll('.item').classed('active',false);
-                d3.select(this).classed('active', true);
-            }
-        });
-        item.exit().remove();
+        
     });
+    
 };
 
 

@@ -216,27 +216,30 @@ icm.tracker = function(status){
 };
 icm.tracker.prototype = {
      _point2position: function(point) {
-        var attributes = { uid: core.user().id(), owner: core.user().data('name')};
-        if(point.time) {
-            attributes.time = point.time;
-        }
-        else {
-            if(!this.params.locationFeature) {
-                console.warn('Recieved a position without time, defaulting to current time');
-                var time = new Date();
-                attributes.time = time.getTime();
+        var _position = null;
+        if (core.user()){
+            var attributes = { uid: core.user().id(), owner: core.user().data('name')};
+            if(point.time) {
+                attributes.time = point.time;
             }
+            else {
+                if(!this.params.locationFeature) {
+                    console.warn('Recieved a position without time, defaulting to current time');
+                    var time = new Date();
+                    attributes.time = time.getTime();
+                }
+            }
+            _position = { 
+                "id": core.peerid(),
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [ point.coords.longitude,point.coords.latitude
+                    ]
+                },
+                "properties": attributes
+            };
         }
-        var _position = { 
-            "id": core.peerid(),
-            "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [ point.coords.longitude,point.coords.latitude
-                ]
-            },
-            "properties": attributes
-        };
         return _position;
     },
 	_setPosition: function(position){

@@ -7,20 +7,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <meta name="apple-mobile-web-app-capable" content="yes">
 
-<!--  <link href='http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css' rel='stylesheet' type='text/css'>
--->  <link href='http://fonts.googleapis.com/css?family=Dosis:300,500' rel='stylesheet' type='text/css'>
+  <link href='http://fonts.googleapis.com/css?family=Dosis:300,500' rel='stylesheet' type='text/css'>
 
   <script src="./libs/shapefile-js/shp.min.js" type="text/javascript"></script>
   <script src="./libs/cow/lib/underscore/underscore-min.js" type="text/javascript"></script>
   <script src="./libs/cow/lib/polyfill-promise/promise-0.1.1.min.js" type="text/javascript"></script>
+  
+  <!-- TODO: would be great if we can get rid of jquery dependency. Now only used for textcomplete -->
   <script src="./libs/cow/lib/jquery-2.0.3/jquery-2.0.3.js" type="text/javascript"></script>	
   <script src="./libs/jquery-ui-1.10.2/jquery-ui.js" type="text/javascript"></script>
   <script src="./libs/jquery-textcomplete/jquery.textcomplete.js" type="text/javascript"></script>  
   <script src="./libs/jquery-mentionsInput/jquery.mentionsInput.js" type="text/javascript"></script>
   <link href='./libs/jquery-mentionsInput/jquery.mentionsInput.css' rel='stylesheet' type='text/css'>
-  <!-- PouchDB -->
-  <script src="./libs/cow/lib/pouchdb/pouchdb-nightly.min.js"></script>
 
+  <!-- IndexedDB -->
+  <script src="./libs/cow/lib/dbjs/db.js"></script>
+  
   <!-- Adding leaflet and D3 libs -->
   <script src="./libs/proj4/proj4.js"></script>
   <script src="./libs/leaflet-0.7/leaflet.js"></script>
@@ -302,7 +304,7 @@ var updateLists = function(){
   //      return '<h3> ' + d._id + ' ('+ username+ ') <small> Since ' + since + ' </h3>'});
   //peer.exit().remove();
   
-  core.userStore().initpromise.then(function(x){
+  core.userStore().loaded.then(function(x){
     //USERS
     var data = icm.users();
     var user = d3.select('#userlist').selectAll('.user')
@@ -324,10 +326,10 @@ var updateLists = function(){
   });
   
   
-  core.projectStore().initpromise.then(function(x){
+  core.projectStore().loaded.then(function(x){
         var self = this;
         //ITEMS
-        core.project().itemStore().initpromise.then(function(x){
+        core.project().itemStore().loaded.then(function(x){
         
             var processMsg = function(item, msgbox){
                 msgbox.classed('selected',false);
@@ -438,7 +440,7 @@ var updateLists = function(){
             
         });
       //GROUPS  
-      core.project().groupStore().initpromise.then(function(x){
+      core.project().groupStore().loaded.then(function(x){
             var data = icm.groups();
             var item = d3.select('#grouplist').selectAll('.group')
                 .data(data, function(d){return 'group'+ d.id().toString();});
@@ -471,7 +473,7 @@ var updateLists = function(){
         });  
         
         
-        //core.project().groupStore().initpromise.then(function(x){
+        //core.project().groupStore().loaded.then(function(x){
         //    var data = core.project().groups();
         //    d3.select(self).append('h4').html('Groups: ');
         //    var group = d3.select(self).selectAll('.group').data(data, function(e){return 'group'+e._id.toString()});
@@ -479,7 +481,7 @@ var updateLists = function(){
         //});
         
         //PROJECTS
-        core.projectStore().initpromise.then(function(foo){
+        core.projectStore().loaded.then(function(foo){
             d3.select('#curproject').html(function(d){return core.project().data('name');});
         });
         //var data = icm.projects();
@@ -577,7 +579,7 @@ var init = function(){
   
     shapedrop_init(map);
     
-   core.projectStore().initpromise.then(function(foo){
+   core.projectStore().loaded.then(function(foo){
    
        var username = getUrlVars()["user"] || 'Anonymous';
        core.users({_id:username}).sync();
@@ -588,7 +590,7 @@ var init = function(){
       
        var group =  getUrlVars()["group"] || '1';
       
-       myproject.groupStore().initpromise.then(function(x){
+       myproject.groupStore().loaded.then(function(x){
         mygroup = myproject.groups(group);
         mygroup.members(core.user().id()); //make me a member
       });
