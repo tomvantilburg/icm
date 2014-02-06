@@ -139,6 +139,15 @@ var updateLists = function(){
     .on('blur',function(d){
         core.project().data('name',this.innerHTML);
     });
+    d3.select('#jsonlayers').html(function(d){
+        var layers = core.project().data('jsonlayers')
+        return JSON.stringify(layers,null,'\t');
+    }).on('focus', function(d){
+        d3.select(this).transition().attr('cols',80).attr('rows',15);
+    }).on('blur',function(d){
+        d3.select(this).transition().attr('cols',10).attr('rows',5);
+        core.project().data('jsonlayers',JSON.parse(this.value)).sync();
+    });
     d3.select('#overlays').html(function(d){
         var layers = core.project().data('layers')
         return JSON.stringify(layers,null,'\t');
@@ -278,6 +287,8 @@ var init = function(){
     </div>
     <div id="projectspecs">
         <h2><span id="curproject" contenteditable="true"></span></h2>
+        <h4>JSON layers</h4>
+        <textarea cols="20" rows="5" id="jsonlayers"></textarea><br>
         <h4>Overlays</h4>
         <textarea cols="20" rows="5" id="overlays"></textarea><br>
         <h4>Baselayers</h4>

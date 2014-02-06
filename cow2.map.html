@@ -66,6 +66,11 @@
   <script src="./src/cow2.icm.smokemodelui.js" type="text/javascript"></script>
   <script src="./src/cow2.shapedrop.js" type="text/javascript"></script>
   <script src="./src/cow2.icm.knopwidget.js" type="text/javascript"></script>
+  <!--Marine traffic -->
+  <script src="./src/icm.marinetraffic.js" type="text/javascript"></script>
+  <script src="http://rawgithub.com/shramov/leaflet-plugins/master/layer/Marker.Rotate.js"></script>
+  <script src="http://rawgithub.com/mlevans/leaflet-hash/master/leaflet-hash.js"></script>
+  
   <link rel="stylesheet" href="./css/knoppenwidget.css" />
   <script src="./src/cookies.js" type="text/javascript"></script>
 <style>
@@ -274,7 +279,7 @@ path {
 
 </style>
 <script type="text/javascript">
-
+var tmp; //DEBUG
 //internal function
 var getUrlVars = function()
 {
@@ -512,6 +517,7 @@ var leaflmap;
 var layercontrol;
 var baseLayers;
 var overLayers;
+var jsonLayers;
 var map;
 var defaultproject;
 var defaultgroup;
@@ -574,6 +580,7 @@ var init = function(){
 
     baseLayers = [];
     overLayers = [];
+    jsonLayers = [];
     layercontrol = new L.control.layers(null,null,{autoZIndex : false}).setPosition("bottomleft").addTo(map);
     L.Control.measureControl({position: "bottomleft"}).addTo(map);
   
@@ -645,18 +652,45 @@ var init = function(){
         overLayers.push({name:name,layer: layer});
     }
     
+    //Change geojsonlayers
+    var jsonlayers = icm.jsonlayers();
+    //Remove existing layers
+    for (var i=0;i<jsonLayers.length;i++){
+        var layer = jsonLayers[i].layer;
+        map.removeLayer(layer);
+        layercontrol.removeLayer(layer);
+    }
+    //Empty overLayers
+    jsonLayers = [];
+    //Add layers from project config
+    for (var i=0;i<jsonlayers.length;i++){
+        var options = jsonlayers[i].options;
+        var name = jsonlayers[i].name;
+        d3.json(options.url, function(data){
+            var layer = L.geoJson(data,options.config);
+            //map.addLayer(layer);
+            layercontrol.addOverlay(layer,name);
+            jsonLayers.push({name:name,layer: layer});
+        });
+    }
+    
     
   });
   
   
   //Start the tracker
   var tracker = new icm.tracker();
+  tmp = tracker;
   tracker.startTracking();
   core.websocket().on('connected',function(){
     if (core.location()){
         core.peer().data('location',core.location());
     }
   });
+  
+  //Start marine traffic
+  loadAis();
+  setInterval(loadAis, 125000); //125 seconds
   
 };
  

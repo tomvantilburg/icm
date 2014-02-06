@@ -108,6 +108,19 @@ icm.tags = function(){
 };
 
 /**
+    jsonlayers() - return json-leaflet layers from project
+**/
+icm.jsonlayers = function(){
+    if (core.project()){
+        return core.project().data('jsonlayers') || [];
+    }
+    else {
+        return [];
+    }
+};
+
+
+/**
     layers() - return leaflet layers from project
 **/
 icm.layers = function(){
@@ -130,6 +143,8 @@ icm.baselayers = function(){
         return [];
     }
 };
+
+
 
 /**
     msg(item) - create a messagebox based on the item
