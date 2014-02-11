@@ -21,7 +21,7 @@ Cow.leaflmap = function(config){
     };
     
     this._map = L.map('map', {}).setView([52.083726,5.111282], 9);//Utrecht
-    this._map.core = core; //TODO, needed for d3layer_utils context menus, but not so nice
+
     this._map.on('moveend',function(e){
         self.handleNewExtent(e);
         d3.selectAll('.popup').remove();//Remove all popups on map
@@ -291,9 +291,10 @@ Cow.leaflmap.prototype =
 			}
         });
         this._map.addLayer(this.locationLayer);
-                
+        
         this.editLayer = new L.GeoJSON.d3(dummyCollection, {
-            onClick: cow.menu,
+            core: core,
+            onClick: Cow.utils.menu,
             //onMouseover: cow.textbox,
             labels: true,
             labelconfig: {
@@ -309,6 +310,32 @@ Cow.leaflmap.prototype =
                 'stroke-width': 2,
                 opacity: 0.5
 			}
+        });
+        this.editLayer.on('model.smoke', function(d){
+             var item = self.core.project().items(d.feature.properties.key);
+             icm.NewModelUi(item);
+         });
+         this.editLayer.on('model.population', function(d){
+             Cow.utils.populator(d.feature);
+         });
+         this.editLayer.on('edit.geom', function(d){ 
+            self.editLayer.addData(d.feature);
+            self.controls.editcontrol.enable();
+         });
+         this.editLayer.on('edit.text', function(d){ 
+            var item = self.core.project().items(d.feature.id);
+            item.data('msg','emtpy').sync();//TODO
+         });
+         this.editLayer.on('share', function(d){
+            Cow.utils.share(d.feature);
+         });
+         this.editLayer.on('delete', function(d){
+            if (confirm('Verwijderen?')) {
+                var key = d.feature.id.toString();
+                self.core.project().items(key).deleted('true').sync();
+            } else {
+                // Do nothing!
+            }
         });
         this._map.addLayer(this.editLayer);
 		
@@ -362,13 +389,13 @@ Cow.leaflmap.prototype =
 		this.drawControl = new L.Control.Draw({
 			draw: false,
 			edit: {
-				//featureGroup: self.editLayer,
 				featureGroup: this.editLayer,
 				edit: false,
 				remove: false
 			}
 		});
 		L.drawLocal.edit.handlers.edit.tooltip.subtext = '';
+		
 
 		this._map.addControl(this.drawControl);
 		
@@ -382,7 +409,7 @@ Cow.leaflmap.prototype =
                         .data('feature',feature)
                         .sync();
 				});
-				self.editLayer.clearLayers();
+				self.editLayer.clearLayers(); 
 				self._reloadLayer();
 				
 				//TODO: hack to remove svg layer that is created by leaflet draw upon drawing
@@ -399,20 +426,19 @@ Cow.leaflmap.prototype =
             feature.properties.linecolor = self.core.current_linecolor;//"aliceBlue";
             feature.properties.polycolor = self.core.current_polycolor;//"red";
             feature.properties.key = self.core.UID + "_" + timestamp;
-            //feature.properties.store = self.core.activeproject();
             feature.properties.creator = self.core.user().data('name');
             feature.properties.owner = self.core.user().data('name');
 
             var id = self.core.peerid() + "_" + timestamp;
             
-            var item = core.project().items(id)
+            var item = core.project().items({_id:id})
                 .data('type','feature')
                 .data('feature', feature)
                 .permissions('view',self.core.project().myGroups())//Set default permissions to my groups
                 .permissions('edit',self.core.project().myGroups())//Set default permissions to my groups
                 .permissions('share',self.core.project().myGroups())//Set default permissions to my groups
                 .sync();
-            self.editLayer.clearLayers();
+            self.editLayer.clearLayers(); 
             self._reloadLayer();
  
 		});
@@ -461,38 +487,14 @@ Cow.leaflmap.prototype =
 			core.current_linecolor = key;
         	core.current_polycolor = key;
 		});
-	},
+	}
 		
 	
-	editfeature: function(self, feature){
-		self._map.closePopup();
-		//TODO!! global leaflmap
-		leaflmap.controls.editcontrol.enable();
-	},
-	deletefeature: function(self,feature, layer){
-		var key = feature.properties.key;
-		core.project().items(key).deleted('true').sync();
-		self._map.closePopup();
-	},                
-	changeFeature: function(self, feature){
-	    var desc = document.getElementById('descfld').value;
-        //feature.properties.name = document.getElementById('titlefld').value; //TODO. Yuck, yuck yuck....
-        feature.properties.desc = desc;
-        feature.properties.owner = self._map.core.user().data('name');
-        self._map.closePopup(); //we have to destroy since the next line triggers a reload of all features
-		//if (self.core.activeproject() == feature.properties.store){
-            var key = feature.properties.key;
-            var item = self._map.core.project().items(key)
-                .data('feature', feature)
-                .data('msg',desc)
-                .sync();
-        //}
-        //self.editLayer.clearLayers();
-	},
+	/* OBS?
 	closepopup: function(self){
 	    d3.select('#featurepopup').html('');//TODO
 		self._map.closePopup();
-	}
+	}*/
 };
 
 

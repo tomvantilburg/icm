@@ -10,6 +10,7 @@ Based on: https://github.com/rclark/leaflet-d3-layer/blob/master/dist/scripts/le
   L.GeoJSON.d3 = L.GeoJSON.extend({
     initialize: function(geojson, options) {
       this.geojson = geojson;
+      this.core = options.core;
       options = options || {};
       options.layerId = options.layerId || ("leaflet-d3-layer-" + (Math.floor(Math.random() * 101)));
       options.onEachFeature = function(geojson, layer) {};
@@ -68,7 +69,7 @@ Based on: https://github.com/rclark/leaflet-d3-layer/blob/master/dist/scripts/le
 		var scale = options.scale || 'px';
 		var pointradius = options.pointradius || 5;
 		
-        bufferPixels = 15;
+        bufferPixels = 150; //Large buffer to make sure labels will fit
         bottomLeft = project(bounds[0]);
         topRight = project(bounds[1]);
         svg.attr("width", topRight[0] - bottomLeft[0] + 2 * bufferPixels);
@@ -76,7 +77,7 @@ Based on: https://github.com/rclark/leaflet-d3-layer/blob/master/dist/scripts/le
         svg.style("margin-left", "" + (bottomLeft[0] - bufferPixels) + "px");
         svg.style("margin-top", "" + (topRight[1] - bufferPixels) + "px");
         g.attr("transform", "translate(" + (-bottomLeft[0] + bufferPixels) + "," + (-topRight[1] + bufferPixels) + ")");
-        
+        console.log('Reloading ',options.layerId);
         //Adding a tooltip div
         /*
         var tooltipdiv = d3.select("body").append("div")   
@@ -102,10 +103,10 @@ Based on: https://github.com/rclark/leaflet-d3-layer/blob/master/dist/scripts/le
             }
 		};
 		this.labelgenerator = labelgenerator; 
-		var click = function(d){
+		var click = function(d,e){
 		    d3.event.stopPropagation();//Prevent the map from firing click event as well
 		    if (onClick){
-		        onClick(d,this, self);
+		        onClick(d,self);
 		    }
 		};
 		
@@ -182,8 +183,6 @@ Based on: https://github.com/rclark/leaflet-d3-layer/blob/master/dist/scripts/le
                     .classed("nodeimg",true)
                     .attr("width", 32)
                     .attr("height", 37)
-                    .attr("x",x-25)
-                    .attr("y",y-25)
                     .style('opacity',function(d){ //special case: opacity for icon
                             return d.style.opacity || style.opacity || 1;
                     });
@@ -323,15 +322,17 @@ Based on: https://github.com/rclark/leaflet-d3-layer/blob/master/dist/scripts/le
                 
                 if (d.style && d.style.icon && d.geometry.type == 'Point'){
                     entity.select('image')
+                        .transition().duration(500)
                         .attr("x",x-25)
                         .attr("y",y-25);
                 }
                 else{
                     entity.select('path') //Only 1 path per entity
+                        .transition().duration(500)
                         .attr("d",pathStyler(d))
                         //.style('opacity',0)
-                        .transition().duration(500)
-                        .style('opacity',1);
+                        
+                        ;
                 }
 			    
 			    if (labels){
@@ -442,6 +443,26 @@ Based on: https://github.com/rclark/leaflet-d3-layer/blob/master/dist/scripts/le
     onRemove: function(map) {
       this._svg.remove();
       return map.off("viewreset", this.resetFunction);
-    }
+    },
+    /* OBS?
+	changeFeature: function(self, feature){
+	    var desc = document.getElementById('descfld').value; //FIXME FIXME FIXME!!
+        //feature.properties.name = document.getElementById('titlefld').value; //TODO. Yuck, yuck yuck....
+        feature.properties.desc = desc;
+        feature.properties.owner = self.core.user().data('name');
+        self._map.closePopup(); //we have to destroy since the next line triggers a reload of all features
+		//if (self.core.activeproject() == feature.properties.store){
+            var key = feature.properties.key;
+            var item = self.core.project().items(key)
+                .data('feature', feature)
+                .data('msg',desc)
+                .sync();
+        //}
+        //self.editLayer.clearLayers();
+	}
+	*/
+    
   });
 }).call(this);
+//Adding some Backbone event binding functionality to the layer
+_.extend(L.GeoJSON.d3.prototype, Events);
