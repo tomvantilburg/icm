@@ -327,7 +327,7 @@ Cow.leaflmap.prototype =
             item.data('msg','emtpy').sync();//TODO
          });
          this.editLayer.on('share', function(d){
-            Cow.utils.share(d.feature);
+            Cow.utils.share(d.feature,self);
          });
          this.editLayer.on('delete', function(d){
             if (confirm('Verwijderen?')) {

@@ -344,80 +344,79 @@ Cow.utils.editText = function(feature,self){
      */
 };
 
-Cow.utils.share = function(feature){
+Cow.utils.share = function(feature, self){
     var mygroups = self.core.project().myGroups();
-                groupnames = "";
-                $.each(mygroups,function(i,d){
-                    groupnames = groupnames + self.core.project().groups(d).data('name');
-                });
-                
-                var allgroups = self.core.project().groups();
-                var grouparr = [];
-                $.each(allgroups, function(i,d){
-                        
-                        grouparr.push(d._id);
-                });
-                div = d3.select('body').append('div')
-                    .style('left',divloc[0]  -100 +  'px')
-                    .style('top',divloc[1] + 0 + 'px')
-                    .classed("popup share ui-draggable", true);
-                sheader = div.append('div')
-                    .classed('sheader', true)
-                    .attr('title','Dit object is gemaakt door');
-                sheader.append('span')
-                    .classed('group populatie',true); //TODO add own groups here
-                sheader.append('span').html(groupnames);
-                scontent = div.append('div')
-                    .classed('scontent', true);
-                scontent.append('div').classed('ssubheader', true).html('deel dit object met:');
-                scontent.append('div').classed('iedereen',true).append('div')
-                    .attr('class','permission share-cop unselected')
-                    .on('click',function(d){
-                        //Only adding permissions here, removing goes 1 by 1
-                        item.permissions('view',grouparr).sync();
-                        d3.selectAll('.permission').attr('class','selected');
-                        console.log('Permissions for all groups added');
-                    })
-                    .html('<span class="group cop" title="COP"></span>Iedereen');
-                
-                var formbox = scontent.append('div').classed('individueel',true).attr('id','permlist');
-                var permissions = d3.select('#permlist').selectAll('.permission').data(allgroups);
-                //Add on/off button for every group
-                var pdiv = permissions.enter().append('div')
-                        .attr('class',function(d){
-                            if (item.permissionHasGroup('view',[d._id])) {
-                                return 'permission selected';
-                            }
-                            else {
-                                return 'permission unselected';
-                            }
-                        })
-                        .on('click',function(d){
-                            if (d3.select(this).classed('unselected')){
-                                d3.select(this).classed('selected',true).classed('unselected',false);
-                                item.permissions('view',d._id).sync();
-                                console.log('Permission added');
-                            }
-                            else {
-                                d3.select(this).classed('unselected',true).classed('selected',false);
-                                item.removePermission('view',[d._id]).sync();
-                                //core.itemstore().items('feature',{data:item.flatten()},'user');
-                                console.log('Permission removed');
-                            }
-                        });
-                    pdiv.append('span').attr('class',function(d){
-                                return 'group ' + d.name;
-                        });
-                    pdiv.append('span')
-                        .html(function(d){return d.name;});
-                scontent.append('div')
-                        .html('Sluiten')
-                        .classed('popupbutton', true)
-                        .on('click',function(z){
-                                //Close share window, 
-                                div.remove();
-                        });
-                //formbox.html(form);
+    groupnames = "";
+    for (var i = 0;i<mygroups.length;i++){
+        var d = mygroups[i];
+        groupnames = groupnames + self.core.project().groups(d).data('name');
+    };
+    var item = self.core.project().items(feature.properties.key); //TODO
+    var allgroups = self.core.project().groups();
+    var grouparr = [];
+    for (i = 0;i<allgroups.length;i++){
+        var d = allgroups[i];
+        grouparr.push(d._id);
+    };
+    var divloc = [300,100];
+    div = d3.select('body').append('div')
+        .style('left',divloc[0]  -100 +  'px')
+        .style('top',divloc[1] + 0 + 'px')
+        .classed("popup share ui-draggable", true);
+    sheader = div.append('div')
+        .classed('sheader', true)
+        .attr('title','Dit object is gemaakt door');
+    sheader.append('span')
+        .classed('group populatie',true); //TODO add own groups here
+    sheader.append('span').html(groupnames);
+    scontent = div.append('div')
+        .classed('scontent', true);
+    scontent.append('div').classed('ssubheader', true).html('deel dit object met:');
+    scontent.append('div').classed('iedereen',true).append('div')
+        .attr('class','permission share-cop unselected')
+        .on('click',function(d){
+            //Only adding permissions here, removing goes 1 by 1
+            item.permissions('view',grouparr).sync();
+            d3.selectAll('.permission').attr('class','selected');
+        })
+        .html('<span class="group cop" title="COP"></span>Iedereen');
+    
+    var formbox = scontent.append('div').classed('individueel',true).attr('id','permlist');
+    var permissions = d3.select('#permlist').selectAll('.permission').data(allgroups);
+    //Add on/off button for every group
+    var pdiv = permissions.enter().append('div')
+            .attr('class',function(d){
+                if (item.permissionHasGroup('view',[d._id])) {
+                    return 'permission selected';
+                }
+                else {
+                    return 'permission unselected';
+                }
+            })
+            .on('click',function(d){
+                if (d3.select(this).classed('unselected')){
+                    d3.select(this).classed('selected',true).classed('unselected',false);
+                    item.permissions('view',d._id).sync();
+                }
+                else {
+                    d3.select(this).classed('unselected',true).classed('selected',false);
+                    item.removePermission('view',[d._id]).sync();
+                    //core.itemstore().items('feature',{data:item.flatten()},'user');
+                }
+            });
+        pdiv.append('span').attr('class',function(d){
+                    return 'group ' + d.name;
+            });
+        pdiv.append('span')
+            .html(function(d){return d.name;});
+    scontent.append('div')
+            .html('Sluiten')
+            .classed('popupbutton', true)
+            .on('click',function(z){
+                    //Close share window, 
+                    div.remove();
+            });
+    //formbox.html(form);
 };
 
 Cow.utils.textbox = function(feature,obj, svg){
